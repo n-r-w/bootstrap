@@ -171,8 +171,10 @@ type testServiceBackoff struct {
 
 func (s *testServiceBackoff) Info() Info {
 	return Info{
-		Name:          s.name,
-		RestartPolicy: backoff.NewConstantBackOff(100 * time.Millisecond),
+		Name: s.name,
+		RestartPolicy: []backoff.RetryOption{
+			backoff.WithBackOff(backoff.NewConstantBackOff(100 * time.Millisecond)),
+		},
 	}
 }
 

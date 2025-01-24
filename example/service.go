@@ -1,3 +1,4 @@
+//nolint:mnd // example code
 package main
 
 import (
@@ -26,8 +27,11 @@ func NewExampleService(name string) *ExampleService {
 func (s *ExampleService) Info() bootstrap.Info {
 	// Service with restart policy that will retry with exponential backoff
 	return bootstrap.Info{
-		Name:          s.name,
-		RestartPolicy: backoff.NewExponentialBackOff(),
+		Name: s.name,
+		RestartPolicy: []backoff.RetryOption{
+			backoff.WithBackOff(backoff.NewExponentialBackOff()),
+			backoff.WithMaxElapsedTime(5 * time.Second),
+		},
 	}
 }
 

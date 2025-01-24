@@ -239,7 +239,7 @@ func (b *Bootstrap) startService(ctx context.Context, s IService) error {
 	}
 
 	var err error
-	if s.Info().RestartPolicy == nil {
+	if len(s.Info().RestartPolicy) == 0 {
 		err = s.Start(ctx)
 	} else {
 		operation := func() (struct{}, error) {
@@ -250,12 +250,12 @@ func (b *Bootstrap) startService(ctx context.Context, s IService) error {
 			return struct{}{}, s.Start(ctx)
 		}
 
-		_, err = backoff.Retry(ctx, operation,
-			backoff.WithBackOff(s.Info().RestartPolicy),
-			backoff.WithNotify(func(err error, d time.Duration) {
-				b.logger.Warningf(ctx, "failed to run service. retrying. name: %s, error: %v, delay: %v", s.Info().Name, err, d)
-			}),
-		)
+		retryOptions := s.Info().RestartPolicy
+		retryOptions = append(retryOptions, backoff.WithNotify(func(err error, d time.Duration) {
+			b.logger.Warningf(ctx, "failed to run service. retrying. name: %s, error: %v, delay: %v", s.Info().Name, err, d)
+		}))
+
+		_, err = backoff.Retry(ctx, operation, retryOptions...)
 	}
 
 	if err != nil {

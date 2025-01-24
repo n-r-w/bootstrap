@@ -12,8 +12,8 @@ import (
 type Info struct {
 	// Name - service name.
 	Name string
-	// RestartPolicy - service restart policy on error. If nil, the service will not be restarted.
-	RestartPolicy backoff.BackOff
+	// RestartPolicy - service restart policy on error. If empty, the service will not be restarted.
+	RestartPolicy []backoff.RetryOption
 }
 
 // IService - interface for a service that can be started and stopped.
