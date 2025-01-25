@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.1
-	github.com/n-r-w/ctxlog v0.0.0-20250125182942-a0644125ab35
+	github.com/n-r-w/ctxlog v1.0.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
 	golang.org/x/sync v0.10.0
