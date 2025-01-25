@@ -8,9 +8,16 @@ import (
 	"time"
 
 	"github.com/n-r-w/bootstrap"
+	"github.com/n-r-w/ctxlog"
 )
 
 func main() {
+	// Create custom logger and put it into context
+	ctx := ctxlog.MustContext(
+		context.Background(),
+		ctxlog.WithEnvType(ctxlog.EnvProduction),
+	)
+
 	// Create bootstrap instance
 	bs, err := bootstrap.New("example-app")
 	if err != nil {
@@ -23,8 +30,9 @@ func main() {
 	api := NewExampleService("api")
 	worker := NewExampleService("background-worker")
 
-	// set start t
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// set start timeout
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -34,8 +42,8 @@ func main() {
 
 		// Run bootstrap with options
 		err = bs.Run(ctx,
-			// Set custom logger
-			bootstrap.WithLogger(newCustomLogger()),
+			// Set custom logger (ctxlog.NewWrapper is a wrapper around slog+zap, that implements ctxlog.ILogger)
+			bootstrap.WithLogger(ctxlog.NewWrapper()),
 			// Set timeouts
 			bootstrap.WithStartTimeout(5*time.Second),
 			bootstrap.WithStopTimeout(5*time.Second),
@@ -52,18 +60,18 @@ func main() {
 			// Optional: add a function to run after all services are started
 			/*
 				bootstrap.WithRunFunc(func(ctx context.Context) error {
-					log.Println("All services started, running main logic...")
+					ctxlog.Info(ctx, "All services started, running main logic...")
 
 					// Simulate some work
 					time.Sleep(2 * time.Second)
 
-					log.Println("Main logic completed")
+					ctxlog.Info(ctx, "Main logic completed")
 					return nil
 				}),
 			*/
 		)
 		if err != nil {
-			log.Printf("Bootstrap failed: %v\n", err)
+			ctxlog.Info(ctx, "Bootstrap failed", "error", err)
 		}
 	}()
 
@@ -72,11 +80,11 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		log.Println("Waiting for context cancellation...")
+		ctxlog.Info(ctx, "Waiting for context cancellation...")
 		time.Sleep(5 * time.Second)
 
 		cancel()
-		log.Println("Context cancelled")
+		ctxlog.Info(ctx, "Context cancelled")
 	}()
 
 	// Wait for bootstrap to finish

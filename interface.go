@@ -47,11 +47,3 @@ type IHealthChecher interface {
 	// The function should not block the execution thread for a long time.
 	AddCheckErrorHandler(handler func(name string, err error))
 }
-
-// ILogger interface for logging.
-type ILogger interface {
-	Debugf(ctx context.Context, format string, args ...any)
-	Infof(ctx context.Context, format string, args ...any)
-	Warningf(ctx context.Context, format string, args ...any)
-	Errorf(ctx context.Context, format string, args ...any)
-}

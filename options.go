@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"context"
 	"time"
+
+	"github.com/n-r-w/ctxlog"
 )
 
 // Option - function for configuring Bootstrap.
@@ -62,7 +64,7 @@ func WithRunFunc(runFunc func(context.Context) error) Option {
 }
 
 // WithLogger - sets logger for logging.
-func WithLogger(logger ILogger) Option {
+func WithLogger(logger ctxlog.ILogger) Option {
 	return func(b *Bootstrap) {
 		b.logger = logger
 	}
