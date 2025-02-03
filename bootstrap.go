@@ -22,6 +22,7 @@ type Bootstrap struct {
 	unordered  []IService
 	ordered    []IService
 	afterStart []IService
+	cleanUp    []func() error
 
 	stopTimeout  time.Duration
 	startTimeout time.Duration
@@ -259,6 +260,13 @@ func (b *Bootstrap) stopHelper(ctx context.Context) {
 	// then stop services that require ordering in reverse start order
 	for i := len(b.ordered) - 1; i >= 0; i-- {
 		stopFunc(b.ordered[i])
+	}
+
+	// run cleanUp functions in reverse order
+	for i := len(b.cleanUp) - 1; i >= 0; i-- {
+		if err := b.cleanUp[i](); err != nil {
+			b.logger.Error(ctx, "failed to run cleanup function", "error", err)
+		}
 	}
 
 	b.logger.Info(ctx, "all services stopped")
