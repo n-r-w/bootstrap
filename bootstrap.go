@@ -12,71 +12,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
+	"github.com/n-r-w/ctxlog"
 	"golang.org/x/sync/errgroup"
 )
-
-// Option - function for configuring Bootstrap.
-type Option func(*Bootstrap)
-
-// WithStopTimeout - sets the timeout for graceful shutdown.
-func WithStopTimeout(timeout time.Duration) Option {
-	return func(b *Bootstrap) {
-		b.stopTimeout = timeout
-	}
-}
-
-// WithStartTimeout - sets the timeout for graceful startup.
-func WithStartTimeout(timeout time.Duration) Option {
-	return func(b *Bootstrap) {
-		b.startTimeout = timeout
-	}
-}
-
-// WithHealthCheck - sets health.Handler for service readiness check.
-func WithHealthCheck(hch IHealthChecher) Option {
-	return func(b *Bootstrap) {
-		b.hch = hch
-	}
-}
-
-// WithOrdered - sets services that must be started in a specific order.
-// Shutdown happens in reverse order after stopping services that don't require ordering.
-func WithOrdered(services ...IService) Option {
-	return func(b *Bootstrap) {
-		b.ordered = services
-	}
-}
-
-// WithUnordered - sets services that can be started in parallel.
-// Shutdown also happens in parallel before stopping services that require ordering.
-func WithUnordered(services ...IService) Option {
-	return func(b *Bootstrap) {
-		b.unordered = services
-	}
-}
-
-// WithAfterStart - sets services that should be started after all others.
-// Startup happens in order after starting all other services.
-// Shutdown happens in reverse order before stopping all other services.
-func WithAfterStart(services ...IService) Option {
-	return func(b *Bootstrap) {
-		b.afterStart = services
-	}
-}
-
-// WithRunFunc - sets a function to run. If set, the function will be called and then work will be completed.
-func WithRunFunc(runFunc func(context.Context) error) Option {
-	return func(b *Bootstrap) {
-		b.runFunc = runFunc
-	}
-}
-
-// WithLogger - sets logger for logging.
-func WithLogger(logger ILogger) Option {
-	return func(b *Bootstrap) {
-		b.logger = logger
-	}
-}
 
 // Bootstrap - helper for starting services.
 type Bootstrap struct {
@@ -84,12 +22,13 @@ type Bootstrap struct {
 	unordered  []IService
 	ordered    []IService
 	afterStart []IService
+	cleanUp    []func() error
 
 	stopTimeout  time.Duration
 	startTimeout time.Duration
 
 	hch    IHealthChecher
-	logger ILogger
+	logger ctxlog.ILogger
 
 	runFunc func(context.Context) error
 }
@@ -111,12 +50,14 @@ func (b *Bootstrap) Run(ctx context.Context, opts ...Option) error {
 		opt(b)
 	}
 
-	b.logger = &loggerWrapper{logger: b.logger}
+	if b.logger == nil {
+		b.logger = ctxlog.NewStubWrapper()
+	}
 
 	var ready int32
 	if b.hch != nil {
 		b.hch.AddLivenessCheck(fmt.Sprintf("%s-app", b.appName), func() error {
-			b.logger.Debugf(ctx, "checking liveness")
+			b.logger.Debug(ctx, "checking liveness status")
 
 			if atomic.LoadInt32(&ready) == 1 {
 				return nil
@@ -125,7 +66,7 @@ func (b *Bootstrap) Run(ctx context.Context, opts ...Option) error {
 		})
 
 		b.hch.AddCheckErrorHandler(func(name string, err error) {
-			b.logger.Errorf(ctx, "healthcheck failed for %s: %v", name, err)
+			b.logger.Error(ctx, "healthcheck failed", "name", name, "error", err)
 		})
 	}
 
@@ -136,13 +77,13 @@ func (b *Bootstrap) Run(ctx context.Context, opts ...Option) error {
 	atomic.StoreInt32(&ready, 1)
 
 	if b.runFunc != nil {
-		b.logger.Infof(ctx, "worker func started")
+		b.logger.Info(ctx, "worker function started")
 		started := time.Now()
 
 		if err := b.runFunc(ctx); err != nil {
-			b.logger.Errorf(ctx, "worker func failed. duration: %v, error: %v", time.Since(started), err)
+			b.logger.Error(ctx, "worker function execution failed", "duration", time.Since(started), "error", err)
 		} else {
-			b.logger.Infof(ctx, "worker func finished. duration: %v", time.Since(started))
+			b.logger.Info(ctx, "worker function completed", "duration", time.Since(started))
 		}
 	} else {
 		b.waitInterrupt(ctx)
@@ -204,7 +145,7 @@ func (b *Bootstrap) startHelper(ctx context.Context) error {
 		return err
 	}
 
-	b.logger.Infof(ctx, "main services started")
+	b.logger.Info(ctx, "main services started")
 
 	// then start services that should be started after all others in order
 	for _, s := range b.afterStart {
@@ -217,19 +158,19 @@ func (b *Bootstrap) startHelper(ctx context.Context) error {
 		}
 	}
 
-	b.logger.Infof(ctx, "all services started")
+	b.logger.Info(ctx, "all services started")
 
 	return nil
 }
 
 // startService - starts a service.
 func (b *Bootstrap) startService(ctx context.Context, s IService) error {
-	b.logger.Infof(ctx, "starting service. name: %s", s.Info().Name)
+	b.logger.Info(ctx, "starting service", "name", s.Info().Name)
 
 	var started int32
 	if b.hch != nil {
 		b.hch.AddReadinessCheck(s.Info().Name, func() error {
-			b.logger.Debugf(ctx, "checking readiness. name: %s", s.Info().Name)
+			b.logger.Debug(ctx, "checking service readiness", "name", s.Info().Name)
 
 			if atomic.LoadInt32(&started) == 0 {
 				return fmt.Errorf("service %s is not started yet", s.Info().Name)
@@ -252,7 +193,7 @@ func (b *Bootstrap) startService(ctx context.Context, s IService) error {
 
 		retryOptions := s.Info().RestartPolicy
 		retryOptions = append(retryOptions, backoff.WithNotify(func(err error, d time.Duration) {
-			b.logger.Warningf(ctx, "failed to run service. retrying. name: %s, error: %v, delay: %v", s.Info().Name, err, d)
+			b.logger.Warn(ctx, "failed to run service - retrying", "name", s.Info().Name, "error", err, "delay", d)
 		}))
 
 		_, err = backoff.Retry(ctx, operation, retryOptions...)
@@ -261,7 +202,7 @@ func (b *Bootstrap) startService(ctx context.Context, s IService) error {
 	if err != nil {
 		return fmt.Errorf("failed to run service %s: %w", s.Info().Name, err)
 	}
-	b.logger.Infof(ctx, "service started. name: %s", s.Info().Name)
+	b.logger.Info(ctx, "service started", "name", s.Info().Name)
 
 	atomic.StoreInt32(&started, 1)
 	return nil
@@ -274,9 +215,9 @@ func (b *Bootstrap) waitInterrupt(ctx context.Context) {
 
 	select {
 	case <-sigs:
-		b.logger.Infof(ctx, "got OS terminate signal, stopping")
+		b.logger.Info(ctx, "received OS terminate signal, shutting down")
 	case <-ctx.Done():
-		b.logger.Infof(ctx, "bootstrap context done, stopping")
+		b.logger.Info(ctx, "bootstrap context done, shutting down")
 	}
 }
 
@@ -292,11 +233,11 @@ func (b *Bootstrap) stopHelper(ctx context.Context) {
 	}
 
 	stopFunc := func(s IService) {
-		b.logger.Infof(ctx, "stopping service. name: %s", s.Info().Name)
+		b.logger.Info(ctx, "stopping service", "name", s.Info().Name)
 		if err := s.Stop(stopCtx); err != nil {
-			b.logger.Errorf(ctx, "failed to stop service. name: %s, error: %v", s.Info().Name, err)
+			b.logger.Error(ctx, "failed to stop service", "name", s.Info().Name, "error", err)
 		} else {
-			b.logger.Infof(ctx, "service stopped. name: %s", s.Info().Name)
+			b.logger.Info(ctx, "service stopped", "name", s.Info().Name)
 		}
 	}
 
@@ -321,5 +262,12 @@ func (b *Bootstrap) stopHelper(ctx context.Context) {
 		stopFunc(b.ordered[i])
 	}
 
-	b.logger.Infof(ctx, "all services stopped")
+	// run cleanUp functions in reverse order
+	for i := len(b.cleanUp) - 1; i >= 0; i-- {
+		if err := b.cleanUp[i](); err != nil {
+			b.logger.Error(ctx, "failed to run cleanup function", "error", err)
+		}
+	}
+
+	b.logger.Info(ctx, "all services stopped")
 }
