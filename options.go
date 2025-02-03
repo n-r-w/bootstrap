@@ -69,3 +69,11 @@ func WithLogger(logger ctxlog.ILogger) Option {
 		b.logger = logger
 	}
 }
+
+// WithCleanUp - adds a function to be called during shutdown.
+// Called in reverse order.
+func WithCleanUp(cleanUp ...func() error) Option {
+	return func(b *Bootstrap) {
+		b.cleanUp = cleanUp
+	}
+}
