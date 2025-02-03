@@ -264,7 +264,7 @@ func (b *Bootstrap) stopHelper(ctx context.Context) {
 
 	// run cleanUp functions in reverse order
 	for i := len(b.cleanUp) - 1; i >= 0; i-- {
-		if err := b.cleanUp[i](); err != nil {
+		if err := b.cleanUp[i](ctx); err != nil {
 			b.logger.Error(ctx, "failed to run cleanup function", "error", err)
 		}
 	}

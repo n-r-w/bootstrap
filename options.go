@@ -8,7 +8,7 @@ import (
 )
 
 // CleanUpFunc - function for cleaning up resources.
-type CleanUpFunc func() error
+type CleanUpFunc func(ctx context.Context) error
 
 // Option - function for configuring Bootstrap.
 type Option func(*Bootstrap)
