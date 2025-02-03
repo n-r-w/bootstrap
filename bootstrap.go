@@ -22,7 +22,7 @@ type Bootstrap struct {
 	unordered  []IService
 	ordered    []IService
 	afterStart []IService
-	cleanUp    []func() error
+	cleanUp    []CleanUpFunc
 
 	stopTimeout  time.Duration
 	startTimeout time.Duration

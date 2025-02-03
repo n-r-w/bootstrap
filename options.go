@@ -7,6 +7,9 @@ import (
 	"github.com/n-r-w/ctxlog"
 )
 
+// CleanUpFunc - function for cleaning up resources.
+type CleanUpFunc func() error
+
 // Option - function for configuring Bootstrap.
 type Option func(*Bootstrap)
 
@@ -72,7 +75,7 @@ func WithLogger(logger ctxlog.ILogger) Option {
 
 // WithCleanUp - adds a function to be called during shutdown.
 // Called in reverse order.
-func WithCleanUp(cleanUp ...func() error) Option {
+func WithCleanUp(cleanUp ...CleanUpFunc) Option {
 	return func(b *Bootstrap) {
 		b.cleanUp = cleanUp
 	}
