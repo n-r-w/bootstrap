@@ -68,4 +68,9 @@ The `Info` struct contains:
 
 ## Health Checks
 
-Health checks can be added using the `IHealthChecker` interface:
+Health checks can be added using the `IHealthChecker` interface
+
+## Executor package
+
+[Executor](executor/service.go) package provides an interface for executing a function at specified time intervals.
+Supports bootstrap.IService interface.
