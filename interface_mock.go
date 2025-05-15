@@ -20,6 +20,7 @@ import (
 type MockIService struct {
 	ctrl     *gomock.Controller
 	recorder *MockIServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockIServiceMockRecorder is the mock recorder for MockIService.
@@ -85,6 +86,7 @@ func (mr *MockIServiceMockRecorder) Stop(ctx any) *gomock.Call {
 type MockIHealthChecher struct {
 	ctrl     *gomock.Controller
 	recorder *MockIHealthChecherMockRecorder
+	isgomock struct{}
 }
 
 // MockIHealthChecherMockRecorder is the mock recorder for MockIHealthChecher.
@@ -105,7 +107,7 @@ func (m *MockIHealthChecher) EXPECT() *MockIHealthChecherMockRecorder {
 }
 
 // AddCheckErrorHandler mocks base method.
-func (m *MockIHealthChecher) AddCheckErrorHandler(handler func(string, error)) {
+func (m *MockIHealthChecher) AddCheckErrorHandler(handler ErrorHandlerFunc) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddCheckErrorHandler", handler)
 }
@@ -117,7 +119,7 @@ func (mr *MockIHealthChecherMockRecorder) AddCheckErrorHandler(handler any) *gom
 }
 
 // AddLivenessCheck mocks base method.
-func (m *MockIHealthChecher) AddLivenessCheck(name string, check func() error) {
+func (m *MockIHealthChecher) AddLivenessCheck(name string, check CheckFunc) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddLivenessCheck", name, check)
 }
@@ -129,7 +131,7 @@ func (mr *MockIHealthChecherMockRecorder) AddLivenessCheck(name, check any) *gom
 }
 
 // AddReadinessCheck mocks base method.
-func (m *MockIHealthChecher) AddReadinessCheck(name string, check func() error) {
+func (m *MockIHealthChecher) AddReadinessCheck(name string, check CheckFunc) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddReadinessCheck", name, check)
 }

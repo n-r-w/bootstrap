@@ -29,6 +29,12 @@ type IService interface {
 	Stop(ctx context.Context) error
 }
 
+// Check handler for checks.
+type CheckFunc func() error
+
+// ErrorHandler handler for errors.
+type ErrorHandlerFunc func(name string, err error)
+
 // IHealthChecher interface for health checks.
 type IHealthChecher interface {
 	// AddReadinessCheck adds a check indicating that this instance
@@ -36,14 +42,14 @@ type IHealthChecher interface {
 	// dependency or some temporary failure. If the readiness check fails, this instance
 	// should no longer receive requests, but it should not be restarted or
 	// destroyed.
-	AddReadinessCheck(name string, check func() error)
+	AddReadinessCheck(name string, check CheckFunc)
 	// AddLivenessCheck adds a check indicating that this instance
 	// of the application should be destroyed or restarted. A failed liveness
 	// check indicates that this instance is not working.
 	// Each liveness check is also included as a readiness check.
-	AddLivenessCheck(name string, check func() error)
+	AddLivenessCheck(name string, check CheckFunc)
 	// AddCheckErrorHandler adds a callback for handling a failed
 	// check (for the purpose of logging errors, etc).
 	// The function should not block the execution thread for a long time.
-	AddCheckErrorHandler(handler func(name string, err error))
+	AddCheckErrorHandler(handler ErrorHandlerFunc)
 }

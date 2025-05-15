@@ -3,8 +3,8 @@ module github.com/n-r-w/bootstrap
 go 1.23.2
 
 require (
-	github.com/cenkalti/backoff/v5 v5.0.1
-	github.com/n-r-w/ctxlog v1.0.1
+	github.com/cenkalti/backoff/v5 v5.0.2
+	github.com/n-r-w/ctxlog v1.0.3
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
 	golang.org/x/sync v0.10.0
@@ -24,5 +24,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

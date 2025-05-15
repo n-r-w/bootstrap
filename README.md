@@ -68,7 +68,8 @@ The `Info` struct contains:
 
 ## Health Checks
 
-Health checks can be added using the `IHealthChecker` interface
+Health checks can be added using the `IHealthChecker` interface.
+In addition, there is an implementation of `IHealthChecker` in the [health](health/health.go) package.
 
 ## Executor package
 
